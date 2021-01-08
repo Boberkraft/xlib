@@ -9,11 +9,13 @@
 #include <math.h>
 #include <vector>
 #include <iostream>
+#include <unistd.h>
 
 #define TRUE 1
 #define FALSE 0
 
 using std::vector;
+
 void move(XPoint *points, int npoints, short rx, short ry) {
     for (int i = 0; i < npoints; i++) {
         points[i].x += rx;
@@ -21,9 +23,15 @@ void move(XPoint *points, int npoints, short rx, short ry) {
     }
 }
 
+void moveArc(XArc *krzywe, int nkrzywe, int rx, int ry) {
+    for (int i = 0; i < nkrzywe; i++) {
+        krzywe[i].x += rx;
+        krzywe[i].y += ry;
+    }
+}
+
 void rotate(XPoint *points, int npoints, int rx, int ry, float angle) {
-    int i;
-    for (i = 0; i < npoints; i++) {
+    for (int i = 0; i < npoints; i++) {
         int x, y;
         float cos = cosf(angle);
         float sin = sinf(angle);
@@ -34,6 +42,45 @@ void rotate(XPoint *points, int npoints, int rx, int ry, float angle) {
     }
 }
 
+void rotateArc(XArc *krzywe, int nkrzywe, int rx, int ry, float angle) {
+    auto degree = angle * 57.2957795;
+    while (degree >= 360) {
+        degree -= 360;
+
+    }
+    for (int i = 0; i < nkrzywe; i++) {
+        int x, y;
+        float cos = cosf(angle);
+        float sin = sinf(angle);
+        x = krzywe[i].x - rx;
+        y = krzywe[i].y - ry;
+//        krzywe[i].x = rx + x * cos - y * sin;
+//        krzywe[i].y = ry + x * sin + y * cos;
+        krzywe[i].angle1 -= degree * 64;
+
+//krzywe[i].angle2 += degree;
+
+
+
+        std::cout << std::endl;
+
+
+//        std::cout << degree << std::endl;
+//
+//        std::cout << "cos = " << cos << std::endl;
+//        std::cout << "cos = " << cos << std::endl;
+//        std::cout << "sin = " << sin << std::endl;
+
+        auto d = (cos + 1);
+        auto p = 1;
+
+        krzywe[i].angle2 += degree;
+//        krzywe[i].x -= 100 * abs(cos-1);
+
+    }
+}
+
+//-90 * 64, 90 * 64
 struct literka {
     vector<XPoint> punkty;
     vector<XArc> krzywe;
@@ -41,7 +88,7 @@ struct literka {
 
 int main(int argc, char *argv[]) {
     char icon_name[] = "Icon";
-    char title[] = "Nacisnik lewy klawisz i przeciagnij kursor by nadac predkosc";
+    char title[] = "\U0001F64F";
     Display *display;
     Window window;
     GC gc;
@@ -60,11 +107,11 @@ int main(int argc, char *argv[]) {
     //kolorki
     Colormap colormap;
 
-    display = XOpenDisplay("");
+    display = XOpenDisplay(0);
     screen_no = DefaultScreen(display);
 
-    background = WhitePixel(display, screen_no);
-    foreground = BlackPixel(display, screen_no);
+    int blackColor = BlackPixel(display, DefaultScreen(display));
+    int whiteColor = WhitePixel(display, DefaultScreen(display));
 
     colormap = DefaultColormap(display, screen_no);
 
@@ -80,9 +127,8 @@ int main(int argc, char *argv[]) {
     info.flags = PPosition | PSize;
 
 
-    window = XCreateSimpleWindow(display, DefaultRootWindow(display),
-                                 info.x, info.y, info.width, info.height,
-                                 20/* grubosc ramki */, foreground, background);
+    window = XCreateSimpleWindow(display, DefaultRootWindow(display), 500, 200,
+                                 800, 800, 0, blackColor, blackColor);
     XSetStandardProperties(display, window, title, icon_name, None,
                            argv, argc, &info);
     gc = XCreateGC(display, window, 0, 0);
@@ -91,7 +137,7 @@ int main(int argc, char *argv[]) {
     XSetBackground(display, gc, background);
     XSetForeground(display, gc, foreground);
 
-    int input_mask = KeyPressMask | ExposureMask | ButtonPressMask | PointerMotionMask |
+    int input_mask = KeyPressMask | ExposureMask | ButtonPressMask | PointerMotionMask | StructureNotifyMask |
                      //ResizeRedirectMask |
                      ButtonReleaseMask | Button1MotionMask | FocusChangeMask | EnterWindowMask | LeaveWindowMask;
 
@@ -110,49 +156,17 @@ int main(int argc, char *argv[]) {
 
     int button_pressed = 0;   // czy klawisz myszy jest nacisniety
 
-
-    struct timeb t, t_poprz;
-
     long liczbapetli = 0;
     to_end = FALSE;
-    literka a;
-    a.punkty.push_back({0, 0});
-    a.punkty.push_back({50, 0});
-    a.punkty.push_back({120, 100});
-    a.punkty.push_back({280, 100});
-    a.punkty.push_back({350, 0});
-    a.punkty.push_back({400, 0});
-    a.punkty.push_back({200, 300});
-    a.punkty.push_back({200, 230});
-    a.punkty.push_back({250, 150});
-    a.punkty.push_back({150, 150});
-    a.punkty.push_back({200, 230});
-    a.punkty.push_back({200, 300});
-    a.punkty.push_back({0, 0});
-    literka b;
-    b.punkty.push_back({0, 0});
-    b.punkty.push_back({200, 0});
-    b.punkty.push_back({200, 50});
-    b.punkty.push_back({200, 100});
-    b.punkty.push_back({150, 150});
-    b.punkty.push_back({150, 250});
-    b.punkty.push_back({100, 300});
-    b.punkty.push_back({0, 300});
-    b.punkty.push_back({50, 250});
-    b.punkty.push_back({100, 250});
-    b.punkty.push_back({100, 200});
-    b.punkty.push_back({50, 200});
-    b.punkty.push_back({50, 250});
-    b.punkty.push_back({0, 300});
-    b.punkty.push_back({0, 0});
-    b.punkty.push_back({50, 50});
-    b.punkty.push_back({50, 100});
-    b.punkty.push_back({150, 100});
-    b.punkty.push_back({150, 50});
-    b.punkty.push_back({50, 50});
-    b.punkty.push_back({0, 0});
-    b.krzywe.push_back({50, 200, 100, 100, -90 * 64, 90 * 64});
-    b.krzywe.push_back({100, 50, 100, 100, -90 * 64, 90 * 64});
+
+    for (;;) {
+        XEvent e;
+        XNextEvent(display, &e);
+        if (e.type == MapNotify)
+            break;
+    }
+
+//    std::cout << "LOL" << std::endl;
 
     while (to_end == FALSE) {
 
@@ -177,32 +191,82 @@ int main(int argc, char *argv[]) {
                 }
 
             case Expose: {
-
+                literka a;
+                a.punkty.push_back({0, 0});
+                a.punkty.push_back({50, 0});
+                a.punkty.push_back({120, 100});
+                a.punkty.push_back({280, 100});
+                a.punkty.push_back({350, 0});
+                a.punkty.push_back({400, 0});
+                a.punkty.push_back({200, 300});
+                a.punkty.push_back({200, 230});
+                a.punkty.push_back({250, 150});
+                a.punkty.push_back({150, 150});
+                a.punkty.push_back({200, 230});
+                a.punkty.push_back({200, 300});
+                a.punkty.push_back({0, 0});
+                literka b;
+                b.punkty.push_back({0, 0});
+                b.punkty.push_back({200, 0});
+                b.punkty.push_back({200, 50});
+                b.punkty.push_back({200, 100});
+                b.punkty.push_back({150, 150});
+                b.punkty.push_back({150, 250});
+                b.punkty.push_back({100, 300});
+                b.punkty.push_back({0, 300});
+                b.punkty.push_back({50, 250});
+                b.punkty.push_back({100, 250});
+                b.punkty.push_back({100, 200});
+                b.punkty.push_back({50, 200});
+                b.punkty.push_back({50, 250});
+                b.punkty.push_back({0, 300});
+                b.punkty.push_back({0, 0});
+                b.punkty.push_back({50, 50});
+                b.punkty.push_back({50, 100});
+                b.punkty.push_back({150, 100});
+                b.punkty.push_back({150, 50});
+                b.punkty.push_back({50, 50});
+                b.punkty.push_back({0, 0});
+                b.krzywe.push_back({50, 200, 100, 100, 0, -90 * 64});
                 liczbapetli += 1;
 
 
                 XSetLineAttributes(display, gc, 4, LineSolid, CapRound, JoinRound);
+
+
+//                std::cout << liczbapetli << std::endl;
+
+
+                rotate(b.punkty.data(), b.punkty.size(), 100, 250, liczbapetli / 100.0);
+                rotateArc(b.krzywe.data(), b.krzywe.size(), 50, 50, liczbapetli / 100.0);
+
+                rotate(a.punkty.data(), a.punkty.size(), 200, 100, liczbapetli / 100.0);
+                moveArc(b.krzywe.data(), b.krzywe.size(), 400, 350);
+                move(b.punkty.data(), b.punkty.size(), 400, 350);
+                move(a.punkty.data(), a.punkty.size(), 200, 100);
+
+
+                XClearWindow(display, window);
                 XSetForeground(display, gc, red.pixel);
+                XDrawArcs(display, window, gc, b.krzywe.data(), b.krzywe.size());
 
-                std::cout << liczbapetli << std::endl;
-
-
-//                rotate(b.punkty.data(), b.punkty.size(), 100, 150, liczbapetli / 100.0);
-//                rotate(a.punkty.data(), a.punkty.size(), 200, 100, liczbapetli / 100000.0);
-
-                move(b.punkty.data(), b.punkty.size(), 1, 0);
-//                move(a.punkty.data(), a.punkty.size(), 200, 100);
                 XDrawLines(display, window, gc, b.punkty.data(), b.punkty.size(), CoordModeOrigin);
-//                XDrawLines(display, window, gc, a.punkty.data(), a.punkty.size(), CoordModeOrigin);
-//                XDrawArcs(display, window, gc, krawedzie, 2);
-
                 XSetForeground(display, gc, green.pixel);
-
-
-//                XFillArcs(display, window, gc, krawedzie, 2);
+                XFillArcs(display, window, gc, b.krzywe.data(), b.krzywe.size());
                 XFillPolygon(display, window, gc, b.punkty.data(), b.punkty.size(), Complex, CoordModeOrigin);
-//                XFillPolygon(display, window, gc, a.punkty.data(), a.punkty.size(), Complex, CoordModeOrigin);
+
+
+
+                XSetForeground(display, gc, red.pixel);
+                XDrawLines(display, window, gc, a.punkty.data(), a.punkty.size(), CoordModeOrigin);
+                XSetForeground(display, gc, green.pixel);
+                XFillPolygon(display, window, gc, a.punkty.data(), a.punkty.size(), Complex, CoordModeOrigin);
+
                 XFlush(display);
+                struct timespec tim, time2;
+                tim.tv_sec = 0;
+                tim.tv_nsec = 5 * 1000 * 10000;
+                nanosleep(&tim, &time2);
                 break;
             }
             case LeaveNotify:                        // kursor myszki znalazl sie poza obszarem okna
